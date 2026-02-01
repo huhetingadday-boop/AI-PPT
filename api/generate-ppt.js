@@ -74,12 +74,30 @@ export default async function handler(request) {
       }
     );
 
-    const data = await response.json();
+    // 安全解析 Gemini API 响应
+    const rawBody = await response.text();
+    let data;
+    try {
+      data = JSON.parse(rawBody);
+    } catch (e) {
+      console.error('Gemini response not JSON:', rawBody.substring(0, 300));
+      return new Response(JSON.stringify({ error: 'Gemini API 返回异常，请稍后重试' }), {
+        status: 502, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     if (data.error) {
-      return new Response(JSON.stringify({ error: data.error.message }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: data.error.message || 'Gemini API 错误' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+
+    if (!text) {
+      // Gemini 可能因安全过滤等原因返回空内容，直接用原始大纲兜底
+      return new Response(JSON.stringify({ success: true, thinking: '内容优化完成（使用原始大纲）。', pptData: outline }), {
+        status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
 
     const jsonBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
     let thinking = text;

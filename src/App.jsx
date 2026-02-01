@@ -508,7 +508,16 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, style: currentStyleLabel, content, urls }),
       });
-      const result = await res.json();
+
+      // 安全解析响应：先读文本，再尝试 JSON.parse
+      const rawText = await res.text();
+      let result;
+      try {
+        result = JSON.parse(rawText);
+      } catch (e) {
+        throw new Error('服务器返回了非预期的响应，请稍后重试');
+      }
+
       if (!res.ok) throw new Error(result.error || '生成失败');
 
       setThinkingText(result.thinking || '分析完成。');
@@ -516,7 +525,7 @@ export default function App() {
         setOutline(result.outline);
         setTimeout(() => setPhase('editing'), 500);
       } else {
-        throw new Error('未能生成大纲');
+        throw new Error('未能生成大纲，请尝试补充更多内容');
       }
     } catch (err) {
       setError(err.message);
@@ -538,7 +547,17 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ outline, style: currentStyleLabel }),
       });
-      const result = await res.json();
+
+      // 安全解析响应
+      const rawText = await res.text();
+      let result;
+      try {
+        result = JSON.parse(rawText);
+      } catch (e) {
+        console.error('Response not JSON:', rawText.substring(0, 200));
+        throw new Error('服务器返回了非预期的响应，请稍后重试');
+      }
+
       if (!res.ok) throw new Error(result.error || '生成失败');
 
       setGenThinking(result.thinking || '生成完成。');
@@ -553,7 +572,6 @@ export default function App() {
     } catch (err) {
       console.error('generatePPT error:', err);
       setError(err.message || '生成失败，请重试');
-      // 不再跳回 editing，保持在 generating 阶段显示错误
     }
   };
 
