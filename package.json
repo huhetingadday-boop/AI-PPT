@@ -1,7 +1,7 @@
 {
   "name": "ai-ppt-studio",
   "version": "1.0.0",
-  "description": "AI-powered PPT generator - from prompt to editable presentations",
+  "description": "AI PPT Generator - Free, powered by Google Gemini",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,15 +20,5 @@
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0"
-  },
-  "keywords": [
-    "ai",
-    "ppt",
-    "powerpoint",
-    "presentation",
-    "generator",
-    "claude",
-    "react"
-  ],
-  "license": "MIT"
+  }
 }

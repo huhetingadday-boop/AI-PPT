@@ -1,54 +1,79 @@
 # AI PPT Studio
 
-> 🎯 从想法到演示文稿，一步到位
+> 🎯 免费 AI PPT 生成器 - 从想法到演示文稿，一步到位
 
-AI PPT Studio 是一个基于 Claude API 的智能 PPT 生成工具，能够根据你的需求描述，快速生成结构化、专业的演示文稿。
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/huhetingadday-boop/AI-PPT-Studio&env=GEMINI_API_KEY&envDescription=Google%20Gemini%20API%20Key%20(免费)&envLink=https://aistudio.google.com/app/apikey)
 
-![Demo](https://img.shields.io/badge/Demo-Live-green) ![License](https://img.shields.io/badge/License-MIT-blue)
+## ✨ 特性
 
-## ✨ 核心功能
+- 🆓 **完全免费** - 使用 Google Gemini API 免费额度
+- 🤖 **AI 智能生成** - 描述需求，自动生成专业 PPT 结构
+- 🎨 **实时预览** - Canvas 风格预览，支持键盘导航
+- 📥 **一键导出** - 导出可编辑的 PPTX 文件
+- 🚀 **一键部署** - 点击上方按钮即可部署
 
-- **🤖 AI 驱动生成**：描述你的 PPT 需求，AI 自动生成结构化大纲
-- **🎨 实时 Canvas 预览**：左侧缩略图 + 右侧主视图，支持键盘导航
-- **📥 一键导出 PPTX**：导出可编辑的 PowerPoint 文件
-- **🔒 安全架构**：API Key 存储在服务端，前端无需暴露敏感信息
+---
 
-## 🚀 快速部署到 Vercel
+## 🚀 5 分钟部署教程
 
-### 方式一：一键部署（推荐）
+### 第一步：获取免费 Gemini API Key（2分钟）
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/huhetingadday-boop/AI-PPT-Studio&env=ANTHROPIC_API_KEY&envDescription=Anthropic%20API%20Key%20from%20console.anthropic.com)
+1. 打开 [Google AI Studio](https://aistudio.google.com/app/apikey)
 
-点击上方按钮，然后：
-1. 授权 Vercel 访问你的 GitHub
-2. 在环境变量设置中填入 `ANTHROPIC_API_KEY`
-3. 点击 Deploy，等待部署完成
+2. 用 Google 账号登录
 
-### 方式二：手动部署
+3. 点击 **「Create API Key」**
 
-1. **Fork 或 Clone 本仓库**
+4. 选择 **「Create API key in new project」**
+
+5. 复制生成的 API Key（格式：`AIzaSy...`）
+
+> 💡 **免费额度**：每天 1500 次请求，足够日常使用！
+
+### 第二步：部署到 Vercel（3分钟）
+
+**方式一：一键部署（推荐）**
+
+1. 点击上方的 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/huhetingadday-boop/AI-PPT-Studio&env=GEMINI_API_KEY&envDescription=Google%20Gemini%20API%20Key%20(免费)&envLink=https://aistudio.google.com/app/apikey) 按钮
+
+2. 用 GitHub 账号登录 Vercel
+
+3. 在 **Environment Variables** 中填入：
+   - Name: `GEMINI_API_KEY`
+   - Value: 粘贴你的 API Key
+
+4. 点击 **Deploy**
+
+5. 等待 1-2 分钟，获得你的专属地址！
+
+**方式二：手动部署**
 
 ```bash
+# 1. 克隆项目
 git clone https://github.com/huhetingadday-boop/AI-PPT-Studio.git
 cd AI-PPT-Studio
-```
 
-2. **安装 Vercel CLI 并登录**
-
-```bash
+# 2. 安装 Vercel CLI
 npm i -g vercel
+
+# 3. 登录并部署
 vercel login
-```
-
-3. **设置环境变量并部署**
-
-```bash
-# 设置 API Key（会提示输入）
-vercel env add ANTHROPIC_API_KEY
-
-# 部署
+vercel env add GEMINI_API_KEY  # 输入你的 API Key
 vercel --prod
 ```
+
+---
+
+## 📖 使用方法
+
+1. 打开部署好的网站
+2. 输入 PPT 需求，例如：
+   - "帮我做一份 8 页的 AI 企业落地 PPT，面向 CTO"
+   - "创建产品发布会 PPT，面向投资人，强调市场机会"
+3. 点击「生成 PPT」
+4. 预览满意后，点击「导出 PPTX」
+
+---
 
 ## 🔧 本地开发
 
@@ -56,66 +81,60 @@ vercel --prod
 # 安装依赖
 npm install
 
-# 创建 .env.local 文件
+# 创建环境变量
 cp .env.example .env.local
-# 编辑 .env.local，填入你的 ANTHROPIC_API_KEY
+# 编辑 .env.local，填入 GEMINI_API_KEY
 
-# 启动开发服务器
-npm run dev
+# 启动开发服务器（需要 Vercel CLI）
+vercel dev
 ```
 
-> ⚠️ 本地开发需要安装 [Vercel CLI](https://vercel.com/docs/cli) 来运行 Serverless Functions：
-> ```bash
-> vercel dev
-> ```
+---
 
-## 📋 支持的 Slide 类型
-
-| 类型 | 说明 |
-|------|------|
-| `title` | 封面页（主标题 + 副标题）|
-| `agenda` | 议程页（带编号的列表）|
-| `content` | 内容页（标题 + 要点列表）|
-| `two-column` | 双栏对比页 |
-| `closing` | 结束页（行动号召）|
-
-## 🏗 项目结构
+## 📁 项目结构
 
 ```
 AI-PPT-Studio/
 ├── api/
-│   └── generate.js      # Vercel Serverless Function (处理 AI 请求)
+│   └── generate.js      # Vercel Serverless Function
 ├── src/
-│   ├── App.jsx          # 主应用组件
-│   ├── main.jsx         # 入口文件
-│   └── index.css        # 样式文件
+│   ├── App.jsx          # 主应用
+│   ├── main.jsx         # 入口
+│   └── index.css        # 样式
 ├── public/
+│   └── favicon.svg      # 图标
 ├── index.html
 ├── package.json
-├── vite.config.js
-├── vercel.json          # Vercel 配置
-└── .env.example         # 环境变量示例
+├── vercel.json
+└── README.md
 ```
 
-## 🔐 安全说明
+---
 
-- API Key 通过 Vercel 环境变量存储，仅服务端可访问
-- 前端不会暴露任何敏感信息
-- 所有 AI 请求通过 `/api/generate` 端点代理
+## ❓ 常见问题
 
-## 🎯 目标用户
+**Q: API Key 会被泄露吗？**
 
-- **P0**：职场高频做 PPT 的人（产品经理、销售、咨询、市场）
-- **P1**：内容型创作者（课件、分享会）
-- **P2**：教育与研究场景
+A: 不会。API Key 存储在 Vercel 服务端环境变量中，前端无法访问。
 
-## 📝 获取 API Key
+**Q: 免费额度够用吗？**
 
-1. 访问 [Anthropic Console](https://console.anthropic.com/)
-2. 注册/登录账号
-3. 在 API Keys 页面创建新的 Key
-4. 复制 Key 并配置到 Vercel 环境变量
+A: 每天 1500 次请求，生成 150+ 份 PPT 完全足够。
+
+**Q: 为什么选择 Gemini 而不是其他模型？**
+
+A: Gemini 免费额度最慷慨，质量也很好，无需信用卡即可使用。
+
+---
 
 ## 📄 License
 
 MIT
+
+---
+
+## 🙏 致谢
+
+- [Google Gemini](https://ai.google.dev/) - 免费 AI API
+- [pptxgenjs](https://github.com/gitbrent/PptxGenJS) - PPTX 生成库
+- [Vercel](https://vercel.com/) - 免费部署平台

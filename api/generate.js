@@ -1,5 +1,5 @@
-// Vercel Serverless Function - 代理 Anthropic API 请求
-// API Key 安全存储在环境变量中
+// Vercel Serverless Function - 使用 Google Gemini API（免费）
+// 免费额度：每天 1500 次请求，足够 MVP 使用
 
 export const config = {
   runtime: 'edge',
@@ -7,14 +7,14 @@ export const config = {
 
 const SYSTEM_PROMPT = `你是一个专业的 PPT 结构设计师。用户会告诉你他们想要的 PPT 主题和要求，你需要生成一个结构化的 PPT 大纲。
 
-请严格按照以下 JSON 格式输出，不要添加任何其他文字：
+请严格按照以下 JSON 格式输出，不要添加任何其他文字、不要添加 markdown 代码块标记：
 
 {
   "title": "PPT 标题",
   "audience": "目标受众",
   "theme": {
-    "primary": "#1a1a2e",
-    "accent": "#4361ee",
+    "primary": "#1e293b",
+    "accent": "#3b82f6",
     "background": "#ffffff"
   },
   "slides": [
@@ -58,10 +58,22 @@ slide type 可选值：title, agenda, content, two-column, closing
 3. 最后一页建议是 closing 类型
 4. 每页 bullets 控制在 3-5 条
 5. 内容要专业、有洞察、对目标受众有价值
-6. 根据用户指定的页数来控制 slides 数量`;
+6. 根据用户指定的页数来控制 slides 数量
+7. 可以根据主题选择合适的配色方案`;
 
 export default async function handler(request) {
-  // 只允许 POST 请求
+  // CORS 处理
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -69,11 +81,11 @@ export default async function handler(request) {
     });
   }
 
-  // 获取环境变量中的 API Key
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // 从环境变量获取 Gemini API Key
+  const apiKey = process.env.GEMINI_API_KEY;
   
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'API Key not configured' }), {
+    return new Response(JSON.stringify({ error: 'Gemini API Key not configured' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -89,46 +101,70 @@ export default async function handler(request) {
       });
     }
 
-    // 调用 Anthropic API
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+    // 调用 Google Gemini API
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: `${SYSTEM_PROMPT}\n\n用户需求：${prompt}` }]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 4096,
+          }
+        }),
+      }
+    );
 
     const data = await response.json();
 
     if (data.error) {
-      return new Response(JSON.stringify({ error: data.error.message }), {
+      console.error('Gemini API Error:', data.error);
+      return new Response(JSON.stringify({ error: data.error.message || 'Gemini API error' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // 提取并解析 JSON
-    if (data.content && data.content[0] && data.content[0].text) {
-      const text = data.content[0].text;
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      
-      if (jsonMatch) {
+    // 提取文本内容
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    // 清理并解析 JSON
+    let cleanText = text
+      .replace(/```json\s*/g, '')
+      .replace(/```\s*/g, '')
+      .trim();
+    
+    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+    
+    if (jsonMatch) {
+      try {
         const pptData = JSON.parse(jsonMatch[0]);
         return new Response(JSON.stringify({ success: true, data: pptData }), {
           status: 200,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError, 'Text:', cleanText);
+        return new Response(JSON.stringify({ error: 'Failed to parse response JSON' }), {
+          status: 500,
           headers: { 'Content-Type': 'application/json' },
         });
       }
     }
 
-    return new Response(JSON.stringify({ error: 'Failed to parse AI response' }), {
+    return new Response(JSON.stringify({ error: 'No valid JSON in response' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
