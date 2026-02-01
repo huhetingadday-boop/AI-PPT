@@ -1,7 +1,6 @@
 {
   "name": "ai-ppt-studio",
-  "version": "1.0.0",
-  "description": "AI PPT Generator - Free, powered by Google Gemini",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
