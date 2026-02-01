@@ -1,137 +1,112 @@
-export const config = { runtime: 'edge' };
+// Node.js Serverless Function（非 Edge）— 超时 60s
+export const config = {
+  maxDuration: 60,
+};
 
-const buildPrompt = (outline, style) => `
-你是一个顶级PPT内容优化师。用户已经确认了以下PPT大纲，请基于这份大纲进行内容扩展和优化。
+const buildPrompt = (outline, style) => `你是PPT内容优化师。基于以下大纲优化内容。
 
-## 用户确认的大纲
-\`\`\`json
-${JSON.stringify(outline, null, 2)}
-\`\`\`
+大纲：
+${JSON.stringify(outline)}
 
-## PPT场景：${style}
+场景：${style}
 
-## 你的任务
+任务：先用150字说明优化思路，然后输出优化后的完整JSON（用\`\`\`json\`\`\`包裹）。
+要求：保持结构不变，丰富内容使bullet更具体，根据场景调整语言风格，保持配色不变。
+JSON格式：{"title":"...","style":"${style}","audience":"...","theme":{...},"slides":[...]}
+slide type可选: title, agenda, content, data, timeline, two-column, closing`;
 
-### 第一步：输出优化思路
-请详细说明你对每一页的优化思路：
-1. 你将如何丰富每页的内容
-2. 哪些要点需要展开或补充数据
-3. 语言风格如何调整以更贴合【${style}】场景
-4. 视觉呈现上有什么建议
+const safeParse = (str) => {
+  try { return JSON.parse(str); } catch { return null; }
+};
 
-### 第二步：输出优化后的完整PPT
-在优化思路之后，输出完整的JSON。你必须：
-- 保持用户确认的整体结构不变
-- 丰富和优化每页的标题和内容
-- 确保每个bullet更加具体、有数据支撑
-- 根据场景调整语言风格
-- 保持主题配色方案不变
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-输出JSON格式（用\`\`\`json\`\`\`包裹）：
-{
-  "title": "PPT主标题",
-  "style": "${style}",
-  "audience": "目标受众",
-  "theme": { "primary": "...", "accent": "...", "background": "..." },
-  "slides": [
-    // 与大纲相同的slide结构，但内容更丰富
-    // type可选: title, agenda, content, data, timeline, two-column, closing
-  ]
-}
-`;
-
-export default async function handler(request) {
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type' } });
-  }
-
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { 'Content-Type': 'application/json' } });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'API Key not configured' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
-  }
+  if (!apiKey) return res.status(500).json({ error: 'API Key not configured' });
 
   try {
-    const { outline, style } = await request.json();
-    if (!outline) {
-      return new Response(JSON.stringify({ error: 'Missing outline' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-    }
+    const { outline, style } = req.body || {};
+    if (!outline) return res.status(400).json({ error: 'Missing outline' });
 
-    const fullPrompt = buildPrompt(outline, style || '商业演讲');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55000);
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
-        }),
-      }
-    );
-
-    // 安全解析 Gemini API 响应
-    const rawBody = await response.text();
-    let data;
+    let response;
     try {
-      data = JSON.parse(rawBody);
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: buildPrompt(outline, style || '商业演讲') }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 4096,
+            },
+          }),
+        }
+      );
     } catch (e) {
-      console.error('Gemini response not JSON:', rawBody.substring(0, 300));
-      return new Response(JSON.stringify({ error: 'Gemini API 返回异常，请稍后重试' }), {
-        status: 502, headers: { 'Content-Type': 'application/json' },
-      });
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        return res.status(200).json({ success: true, thinking: 'API 响应较慢，已使用原始大纲。', pptData: outline });
+      }
+      throw e;
+    }
+    clearTimeout(timeout);
+
+    const rawBody = await response.text();
+    const data = safeParse(rawBody);
+
+    if (!data) {
+      console.error('Gemini non-JSON:', rawBody.substring(0, 300));
+      return res.status(200).json({ success: true, thinking: 'API 返回异常，已使用原始大纲。', pptData: outline });
     }
 
     if (data.error) {
-      return new Response(JSON.stringify({ error: data.error.message || 'Gemini API 错误' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      console.error('Gemini error:', data.error);
+      return res.status(200).json({ success: true, thinking: `注意：${data.error.message || 'API错误'}，已使用原始大纲。`, pptData: outline });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
-
     if (!text) {
-      // Gemini 可能因安全过滤等原因返回空内容，直接用原始大纲兜底
-      return new Response(JSON.stringify({ success: true, thinking: '内容优化完成（使用原始大纲）。', pptData: outline }), {
-        status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      return res.status(200).json({ success: true, thinking: '已使用原始大纲。', pptData: outline });
     }
 
     const jsonBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
     let thinking = text;
     let pptData = null;
 
-    // 安全解析 JSON 的辅助函数
-    const safeParse = (str) => {
-      try { return JSON.parse(str); } catch (e) { return null; }
-    };
-
     if (jsonBlockMatch) {
       thinking = text.substring(0, text.indexOf('```json')).trim();
       pptData = safeParse(jsonBlockMatch[1]);
-      if (!pptData) {
-        const fallback = text.match(/\{[\s\S]*\}/);
-        if (fallback) pptData = safeParse(fallback[0]);
-      }
-    } else {
-      const fallback = text.match(/\{[\s\S]*\}/);
-      if (fallback) {
-        thinking = text.substring(0, text.indexOf(fallback[0])).trim();
-        pptData = safeParse(fallback[0]);
+    }
+    if (!pptData) {
+      const fb = text.match(/\{[\s\S]*\}/);
+      if (fb) {
+        if (!jsonBlockMatch) thinking = text.substring(0, text.indexOf(fb[0])).trim();
+        pptData = safeParse(fb[0]);
       }
     }
-
-    // Fallback: if no enriched version, use the original outline
     if (!pptData) pptData = outline;
 
-    return new Response(JSON.stringify({ success: true, thinking, pptData }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
+    return res.status(200).json({ success: true, thinking: thinking || '优化完成。', pptData });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    console.error('generate-ppt error:', error);
+    // 即使出错也返回原始大纲，保证不会崩溃
+    const outline = req.body?.outline;
+    if (outline) {
+      return res.status(200).json({ success: true, thinking: '生成过程出现问题，已使用原始大纲。', pptData: outline });
+    }
+    return res.status(500).json({ error: error.message || '服务器错误' });
   }
 }

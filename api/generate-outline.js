@@ -1,220 +1,142 @@
-export const config = { runtime: 'edge' };
+// Node.js Serverless Function — 超时 60s
+export const config = {
+  maxDuration: 60,
+};
 
 const KNOWLEDGE_BASE = `
-## 述职汇报 PPT
-常见内容结构：总-分-总结构。开场简介汇报主题和目的，包括"我是谁"（姓名职位）及汇报时间范围。主体部分详述工作内容和关键成果，按职责或项目模块分板块汇报，列举具体业绩数据、案例成果和经验教训。结尾总结整体业绩，提出未来计划或改进方向。
-视觉风格：正式专业，重视数据图表（柱状图、折线图、饼图），版面简洁大方，每页不宜信息过载。
-语言风格：第一人称叙述（如"我完成了…"），简洁明了、客观专业，突出事实和数据。
+述职汇报：总-分-总结构，第一人称，正式专业，重视数据图表。
+商业演讲：痛点-方案-优势-案例的故事线，"我们/您"，简洁有力，一页一重点。
+投融资路演：经典十页法则（概述、痛点、方案、模式、市场、竞争、优势、团队、财务、融资），12-15页，短句关键词。
+培训课件：导入-展开-小结循环，第二人称/祈使句，图文并茂，要点式列举。
+学术汇报：标题→背景→方法→结果→结论→致谢，浅色背景深色文字，图表为重心，专业严谨。
+项目总结：背景目标→过程产出→结果绩效→经验教训，正式客观，图表呈现数据。
+竞聘演讲：个人简介→岗位理解→优势劣势→工作设想，第一人称，激情自信，用数据说话。`;
 
-## 商业演讲 PPT
-常见内容结构：侧重讲好"故事"。开场用一个痛点或引题切入。主体按照问题-方案-优势-案例的逻辑展开。结尾总结关键信息，给出号召（Call to Action）。
-视觉风格：专业性和吸引力的平衡，适当加入丰富的图示和图表（信息图、流程图、对比图表），一页一重点，杜绝大段文字。
-语言风格：简洁、有力且富有说服力，常以第一人称复数（"我们"）或第二人称（"您"），富有激情和故事性。
+const buildPrompt = (style, content, urls, userPrompt) => `你是PPT内容战略家。根据用户材料和场景生成PPT大纲。
 
-## 投融资路演 PPT
-常见内容结构：遵循经典十页法则。常见顺序：公司/项目概述、市场痛点、解决方案、商业模式、市场前景、竞争分析、核心优势、团队介绍、财务及里程碑、融资需求。必须高度凝练。
-视觉风格：简洁直观和视觉冲击力，全篇不超过12-15页，每页只传达单一主题，大量运用图表和图示，以图胜于字。
-语言风格：简明扼要、富有激情，文字通常用短句或关键词罗列。用"人话"讲清商业模式。
-
-## 培训课件 PPT
-常见内容结构：导入-展开-小结的循环。开头有课程简介/目标。正式内容按章节或模块划分，每个模块内部遵循理论讲解->案例/示例->练习/讨论的流程。结尾包含总结回顾和Q&A答疑。
-视觉风格：专业清晰，也可活泼亲和。强调内容重点处可以用图标、示意图或流程图帮助理解。图文并茂。
-语言风格：教学化和互动式。常采用第二人称或祈使句（例如"请思考…"），专业术语会进行解释。PPT上文字多用要点式列举。
-
-## 学术汇报 PPT
-常见内容结构：紧扣论文或研究的结构，逻辑缜密。框架：标题页->研究背景与意义->研究方法->研究结果->讨论与结论->致谢。
-视觉风格：简洁清晰、突出信息，浅色背景+深色文字（白底黑字），图表是重心。
-语言风格：专业严谨且简明，多为论文式的短语或句子提要，措辞客观中立。
-
-## 项目总结 PPT
-常见内容结构：围绕项目生命周期。项目背景与目标->过程与产出->结果与绩效->经验教训与改进。
-视觉风格：简洁专业，大量使用标题和小标题，运用图表和图形呈现数据和进度（如甘特图、柱状图）。
-语言风格：正式客观，突出事实和数据，内容多以要点形式呈现。
-
-## 竞聘演讲 PPT
-常见内容结构：围绕个人优势和岗位契合度。四个核心部分：个人简介->岗位理解->优势劣势分析->工作设想。
-视觉风格：简洁美观且富有个人特色，庄重但有辨识度。
-语言风格：激情自信、条理清晰，使用第一人称（"我"），语言生动，运用实例和具体业绩故事支撑观点。
-`;
-
-const buildPrompt = (style, content, urls, userPrompt) => `
-你是一个顶级的"PPT内容战略家"和"项目指挥官"。
-
-## 核心知识库
+场景知识库：
 ${KNOWLEDGE_BASE}
 
-## 你的任务
+用户选择的场景：【${style}】
+${content ? `用户材料：\n${content}\n` : ''}
+${urls ? `参考链接：${urls}\n` : ''}
+${userPrompt ? `额外需求：${userPrompt}\n` : ''}
 
-用户选择的PPT场景是：【${style}】
-用户提供的原始材料如下：
+任务：
+1. 先用200字分析：场景特点、提取的关键信息、结构规划、语言和视觉风格建议
+2. 然后输出JSON大纲（用\`\`\`json\`\`\`包裹）
 
-${content ? `### 用户提供的文字内容：\n${content}\n` : ''}
-${urls ? `### 用户提供的参考资料链接：\n${urls}\n` : ''}
-${userPrompt ? `### 用户的额外需求：\n${userPrompt}\n` : ''}
-
-请按以下两个步骤工作：
-
-### 第一步：输出你的分析过程
-请用自然语言详细阐述你的分析和思考过程，包括：
-1. 🎯 **场景识别**：匹配到了哪个场景，该场景有什么特点
-2. 📋 **内容分析**：从原始材料中提取了哪些关键信息、数据和观点
-3. 🏗️ **结构规划**：你计划采用什么结构来组织PPT，为什么
-4. ✍️ **语言风格**：将采用什么语言风格，为什么适合这个场景
-5. 🎨 **视觉建议**：推荐的配色和视觉风格
-
-请确保分析过程详细、有洞察力，让用户能够理解你的设计思路。
-
-### 第二步：输出结构化大纲
-在分析过程之后，请输出一个JSON代码块，格式如下：
-
+JSON格式：
 \`\`\`json
 {
-  "title": "PPT主标题",
+  "title": "PPT标题",
   "style": "${style}",
   "audience": "目标受众",
-  "theme": {
-    "primary": "#1e293b",
-    "accent": "#3b82f6",
-    "background": "#ffffff"
-  },
+  "theme": { "primary": "#1e293b", "accent": "#3b82f6", "background": "#ffffff" },
   "slides": [
-    {
-      "type": "title",
-      "headline": "主标题",
-      "subheadline": "副标题"
-    },
-    {
-      "type": "agenda",
-      "headline": "议程标题",
-      "bullets": ["议程项1", "议程项2"]
-    },
-    {
-      "type": "content",
-      "headline": "内容页标题",
-      "bullets": ["要点1", "要点2", "要点3"]
-    },
-    {
-      "type": "data",
-      "headline": "数据展示标题",
-      "metrics": [
-        { "label": "指标名", "value": "数值", "description": "说明" }
-      ]
-    },
-    {
-      "type": "timeline",
-      "headline": "时间线标题",
-      "items": [
-        { "phase": "阶段", "title": "标题", "description": "描述" }
-      ]
-    },
-    {
-      "type": "two-column",
-      "headline": "对比标题",
-      "leftTitle": "左列",
-      "leftBullets": ["左1"],
-      "rightTitle": "右列",
-      "rightBullets": ["右1"]
-    },
-    {
-      "type": "closing",
-      "headline": "结束语",
-      "subheadline": "行动号召",
-      "bullets": ["下一步1"]
-    }
+    { "type": "title", "headline": "主标题", "subheadline": "副标题" },
+    { "type": "agenda", "headline": "议程", "bullets": ["项1", "项2"] },
+    { "type": "content", "headline": "标题", "bullets": ["要点1", "要点2", "要点3"] },
+    { "type": "data", "headline": "数据", "metrics": [{"label":"指标","value":"数值","description":"说明"}] },
+    { "type": "timeline", "headline": "时间线", "items": [{"phase":"阶段","title":"标题","description":"描述"}] },
+    { "type": "two-column", "headline": "对比", "leftTitle":"左", "leftBullets":["左1"], "rightTitle":"右", "rightBullets":["右1"] },
+    { "type": "closing", "headline": "结束", "subheadline": "号召", "bullets": ["下一步"] }
   ]
 }
 \`\`\`
 
-slide type可选值：title, agenda, content, data, timeline, two-column, closing
+type可选：title, agenda, content, data, timeline, two-column, closing
+严格遵守【${style}】的结构和风格。8-15页，每页3-5条bullets。`;
 
-严格遵守知识库中【${style}】的内容结构、视觉风格和语言风格规则。
-根据内容量合理控制页数（一般8-15页）。每页bullets控制在3-5条。
-`;
+const safeParse = (str) => {
+  try { return JSON.parse(str); } catch { return null; }
+};
 
-export default async function handler(request) {
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type' } });
-  }
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { 'Content-Type': 'application/json' } });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'API Key not configured' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
-  }
+  if (!apiKey) return res.status(500).json({ error: 'API Key not configured' });
 
   try {
-    const { prompt, style, content, urls } = await request.json();
+    const { prompt, style, content, urls } = req.body || {};
     const fullPrompt = buildPrompt(style || '商业演讲', content || '', urls || '', prompt || '');
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
-        }),
-      }
-    );
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55000);
 
-    // 安全解析 Gemini API 响应
-    const rawBody = await response.text();
-    let data;
+    let response;
     try {
-      data = JSON.parse(rawBody);
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 8192,
+            },
+          }),
+        }
+      );
     } catch (e) {
-      console.error('Gemini response not JSON:', rawBody.substring(0, 300));
-      return new Response(JSON.stringify({ error: 'Gemini API 返回异常，请稍后重试' }), {
-        status: 502, headers: { 'Content-Type': 'application/json' },
-      });
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        return res.status(504).json({ error: 'AI 生成超时，请简化输入后重试' });
+      }
+      throw e;
+    }
+    clearTimeout(timeout);
+
+    const rawBody = await response.text();
+    const data = safeParse(rawBody);
+
+    if (!data) {
+      console.error('Gemini non-JSON:', rawBody.substring(0, 300));
+      return res.status(502).json({ error: 'Gemini API 返回异常，请重试' });
     }
 
     if (data.error) {
-      return new Response(JSON.stringify({ error: data.error.message || 'Gemini API 错误' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return res.status(400).json({ error: data.error.message || 'Gemini API 错误' });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
-
     if (!text) {
-      return new Response(JSON.stringify({ error: 'Gemini 返回空内容，请尝试简化输入后重试' }), {
-        status: 500, headers: { 'Content-Type': 'application/json' },
-      });
+      return res.status(500).json({ error: 'AI 返回空内容，请重试' });
     }
 
-    // Split thinking and JSON
     const jsonBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
     let thinking = text;
     let outline = null;
 
-    const safeParse = (str) => {
-      try { return JSON.parse(str); } catch (e) { return null; }
-    };
-
     if (jsonBlockMatch) {
       thinking = text.substring(0, text.indexOf('```json')).trim();
       outline = safeParse(jsonBlockMatch[1]);
-      if (!outline) {
-        const fallback = text.match(/\{[\s\S]*\}/);
-        if (fallback) outline = safeParse(fallback[0]);
-      }
-    } else {
-      const fallback = text.match(/\{[\s\S]*\}/);
-      if (fallback) {
-        thinking = text.substring(0, text.indexOf(fallback[0])).trim();
-        outline = safeParse(fallback[0]);
+    }
+    if (!outline) {
+      const fb = text.match(/\{[\s\S]*\}/);
+      if (fb) {
+        if (!jsonBlockMatch) thinking = text.substring(0, text.indexOf(fb[0])).trim();
+        outline = safeParse(fb[0]);
       }
     }
 
-    return new Response(JSON.stringify({ success: true, thinking, outline }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
+    if (!outline) {
+      return res.status(500).json({ error: 'AI 未生成有效大纲，请重试' });
+    }
+
+    return res.status(200).json({ success: true, thinking: thinking || '分析完成。', outline });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    console.error('generate-outline error:', error);
+    return res.status(500).json({ error: error.message || '服务器错误' });
   }
 }
