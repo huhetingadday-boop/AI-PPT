@@ -85,19 +85,23 @@ export default async function handler(request) {
     let thinking = text;
     let pptData = null;
 
+    // 安全解析 JSON 的辅助函数
+    const safeParse = (str) => {
+      try { return JSON.parse(str); } catch (e) { return null; }
+    };
+
     if (jsonBlockMatch) {
       thinking = text.substring(0, text.indexOf('```json')).trim();
-      try {
-        pptData = JSON.parse(jsonBlockMatch[1]);
-      } catch (e) {
+      pptData = safeParse(jsonBlockMatch[1]);
+      if (!pptData) {
         const fallback = text.match(/\{[\s\S]*\}/);
-        if (fallback) pptData = JSON.parse(fallback[0]);
+        if (fallback) pptData = safeParse(fallback[0]);
       }
     } else {
       const fallback = text.match(/\{[\s\S]*\}/);
       if (fallback) {
         thinking = text.substring(0, text.indexOf(fallback[0])).trim();
-        pptData = JSON.parse(fallback[0]);
+        pptData = safeParse(fallback[0]);
       }
     }
 

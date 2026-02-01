@@ -551,8 +551,9 @@ export default function App() {
         setTimeout(() => setPhase('preview'), 500);
       }
     } catch (err) {
-      setError(err.message);
-      setPhase('editing');
+      console.error('generatePPT error:', err);
+      setError(err.message || '生成失败，请重试');
+      // 不再跳回 editing，保持在 generating 阶段显示错误
     }
   };
 
@@ -725,7 +726,7 @@ export default function App() {
             </div>
             {/* 右侧：PPT 预览 */}
             <div className="w-1/2 lg:w-3/5 p-4 flex flex-col overflow-hidden">
-              {phase === 'generating' && !pptData && (
+              {phase === 'generating' && !pptData && !error && (
                 <div className="flex-1 flex items-center justify-center text-slate-500">
                   <div className="text-center">
                     <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-green-500" />
@@ -733,8 +734,30 @@ export default function App() {
                   </div>
                 </div>
               )}
+              {error && (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center max-w-md">
+                    <div className="p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 text-sm mb-4">
+                      ⚠️ {error}
+                    </div>
+                    <div className="flex gap-3 justify-center">
+                      <button
+                        onClick={() => { setError(null); setPhase('editing'); }}
+                        className="px-4 py-2 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-sm flex items-center gap-1.5"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" /> 返回修改大纲
+                      </button>
+                      <button
+                        onClick={() => { setError(null); generatePPT(); }}
+                        className="px-4 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg text-sm flex items-center gap-1.5"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" /> 重试
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {pptData && <PPTPreview pptData={pptData} onReset={resetAll} />}
-              {error && <div className="mt-3 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-sm">{error}</div>}
             </div>
           </div>
         )}

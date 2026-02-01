@@ -173,19 +173,22 @@ export default async function handler(request) {
     let thinking = text;
     let outline = null;
 
+    const safeParse = (str) => {
+      try { return JSON.parse(str); } catch (e) { return null; }
+    };
+
     if (jsonBlockMatch) {
       thinking = text.substring(0, text.indexOf('```json')).trim();
-      try {
-        outline = JSON.parse(jsonBlockMatch[1]);
-      } catch (e) {
+      outline = safeParse(jsonBlockMatch[1]);
+      if (!outline) {
         const fallback = text.match(/\{[\s\S]*\}/);
-        if (fallback) outline = JSON.parse(fallback[0]);
+        if (fallback) outline = safeParse(fallback[0]);
       }
     } else {
       const fallback = text.match(/\{[\s\S]*\}/);
       if (fallback) {
         thinking = text.substring(0, text.indexOf(fallback[0])).trim();
-        outline = JSON.parse(fallback[0]);
+        outline = safeParse(fallback[0]);
       }
     }
 
