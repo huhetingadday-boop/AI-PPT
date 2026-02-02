@@ -197,45 +197,61 @@ function MindMapOutline({ outline, setOutline, onConfirm, isGenerating }) {
 function SlideRenderer({ slide, theme, si = 0, total = 1, templateBg, fontSize = 1 }) {
   const accent = theme?.accent || '#22d3ee';
   const fs = fontSize;
-  const getIcon = (i) => { const I = ICONS[(si * 5 + i) % ICONS.length]; return <I className="w-6 h-6" style={{ color: accent }} />; };
+  const hasTmpl = !!templateBg;
 
-  // Detect card layout: 2-4 bullets with "title: desc" format
+  // 模板模式：深色文字；默认模式：浅色文字
+  const c = hasTmpl
+    ? { h1: '#1a1a2e', h2: accent, body: '#1e293b', sub: '#64748b', muted: '#94a3b8', cardBg: 'rgba(0,0,0,0.03)', cardBorder: 'rgba(0,0,0,0.08)', numBg: accent, numText: '#ffffff', iconBg: `${accent}15` }
+    : { h1: '#ffffff', h2: accent, body: 'rgba(255,255,255,0.8)', sub: 'rgba(255,255,255,0.5)', muted: 'rgba(255,255,255,0.25)', cardBg: 'rgba(255,255,255,0.025)', cardBorder: `${accent}18`, numBg: `linear-gradient(135deg, ${accent}, ${accent}88)`, numText: '#ffffff', iconBg: `${accent}10` };
+
+  // 模板安全区：顶部留出 logo 区 (10%)，底部留出 footer (8%)
+  const safeZone = hasTmpl ? { padding: '10% 5% 8% 5%' } : { padding: '5% 6%' };
+  const safeFull = hasTmpl ? { padding: '10% 8% 8% 8%' } : { padding: '5% 6%' };
+
+  const getIcon = (i) => { const I = ICONS[(si * 5 + i) % ICONS.length]; return <I className="w-5 h-5" style={{ color: accent }} />; };
+
   const isCards = slide.type === 'content' && slide.bullets?.length >= 2 && slide.bullets?.length <= 4 &&
     slide.bullets.every(b => /^.+[：:].+/.test(b));
 
   const layouts = {
     title: (
-      <div className="flex flex-col items-center justify-center h-full text-center px-[10%]">
-        <div className="w-12 h-0.5 rounded mb-5 opacity-60" style={{ background: accent }} />
-        <h1 className="font-extrabold text-white mb-3 leading-tight tracking-tight" style={{ fontSize: `${2.2 * fs}rem` }}>{slide.headline}</h1>
-        {slide.subheadline && <p className="font-medium opacity-70" style={{ color: accent, fontSize: `${1 * fs}rem` }}>{slide.subheadline}</p>}
-        <div className="w-12 h-0.5 rounded mt-5 opacity-60" style={{ background: accent }} />
+      <div className="flex flex-col items-center justify-center h-full text-center" style={{ padding: hasTmpl ? '12% 10%' : '5% 10%' }}>
+        {!hasTmpl && <div className="w-12 h-0.5 rounded mb-5 opacity-60" style={{ background: accent }} />}
+        <h1 className="font-extrabold mb-3 leading-tight tracking-tight" style={{ color: c.h1, fontSize: `${2.2 * fs}rem` }}>{slide.headline}</h1>
+        {slide.subheadline && <p className="font-medium" style={{ color: c.sub, fontSize: `${1 * fs}rem` }}>{slide.subheadline}</p>}
+        {!hasTmpl && <div className="w-12 h-0.5 rounded mt-5 opacity-60" style={{ background: accent }} />}
       </div>
     ),
 
     agenda: (
-      <div className="flex flex-col h-full" style={{ padding: '6% 7%' }}>
-        <h2 className="font-bold mb-[5%]" style={{ color: accent, fontSize: `${1.6 * fs}rem` }}>{slide.headline}</h2>
-        <div className="flex-1 flex flex-col justify-center gap-[3%]">
-          {slide.bullets?.map((b, i) => (
-            <div key={i} className="flex items-center gap-[3%] p-[2.5%] rounded-xl" style={{ background: 'rgba(255,255,255,0.03)' }}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0" style={{ background: `linear-gradient(135deg, ${accent}, ${accent}88)`, fontSize: `${0.8 * fs}rem` }}>{i + 1}</div>
-              <span className="text-white/80 font-medium" style={{ fontSize: `${0.85 * fs}rem` }}>{b}</span>
-            </div>
-          ))}
+      <div className="flex flex-col h-full" style={safeFull}>
+        <h2 className="font-bold mb-[4%]" style={{ color: c.h2, fontSize: `${1.5 * fs}rem` }}>{slide.headline}</h2>
+        <div className="flex-1 flex flex-col justify-center gap-[2.5%] overflow-hidden">
+          {slide.bullets?.map((b, i) => {
+            const parts = b.match(/^(.+?)[：:]\s*(.+)$/);
+            return (
+              <div key={i} className="flex items-center gap-[3%] p-[2%] rounded-xl" style={{ background: c.cardBg }}>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold flex-shrink-0" style={{ background: accent, color: c.numText, fontSize: `${0.7 * fs}rem` }}>{i + 1}</div>
+                <div className="flex-1 min-w-0">
+                  {parts ? (<><span className="font-bold" style={{ color: c.body, fontSize: `${0.78 * fs}rem` }}>{parts[1]}</span><span style={{ color: c.sub, fontSize: `${0.65 * fs}rem` }}>：{parts[2]}</span></>) :
+                    <span className="font-medium" style={{ color: c.body, fontSize: `${0.78 * fs}rem` }}>{b}</span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     ),
 
     data: (
-      <div className="flex flex-col h-full" style={{ padding: '6% 7%' }}>
-        <h2 className="font-bold mb-[5%]" style={{ color: accent, fontSize: `${1.6 * fs}rem` }}>{slide.headline}</h2>
+      <div className="flex flex-col h-full" style={safeFull}>
+        <h2 className="font-bold mb-[4%]" style={{ color: c.h2, fontSize: `${1.5 * fs}rem` }}>{slide.headline}</h2>
         <div className="flex-1 grid gap-[3%] content-center" style={{ gridTemplateColumns: `repeat(${Math.min(slide.metrics?.length || 3, 3)}, 1fr)` }}>
           {slide.metrics?.map((m, i) => (
-            <div key={i} className="text-center p-[8%] rounded-xl border" style={{ background: `${accent}08`, borderColor: `${accent}15` }}>
+            <div key={i} className="text-center p-[8%] rounded-xl border" style={{ background: c.cardBg, borderColor: c.cardBorder }}>
               <div className="font-extrabold mb-1" style={{ color: accent, fontSize: `${2 * fs}rem` }}>{m.value}</div>
-              <div className="font-semibold text-white/70" style={{ fontSize: `${0.8 * fs}rem` }}>{m.label}</div>
-              {m.description && <div className="text-white/30 mt-1" style={{ fontSize: `${0.65 * fs}rem` }}>{m.description}</div>}
+              <div className="font-semibold" style={{ color: c.body, fontSize: `${0.8 * fs}rem` }}>{m.label}</div>
+              {m.description && <div className="mt-1" style={{ color: c.muted, fontSize: `${0.65 * fs}rem` }}>{m.description}</div>}
             </div>
           ))}
         </div>
@@ -243,16 +259,16 @@ function SlideRenderer({ slide, theme, si = 0, total = 1, templateBg, fontSize =
     ),
 
     timeline: (
-      <div className="flex flex-col h-full" style={{ padding: '6% 7%' }}>
-        <h2 className="font-bold mb-[6%]" style={{ color: accent, fontSize: `${1.6 * fs}rem` }}>{slide.headline}</h2>
+      <div className="flex flex-col h-full" style={safeFull}>
+        <h2 className="font-bold mb-[5%]" style={{ color: c.h2, fontSize: `${1.5 * fs}rem` }}>{slide.headline}</h2>
         <div className="flex-1 flex items-center">
           <div className="w-full flex items-start justify-between relative">
-            <div className="absolute top-5 left-0 right-0 h-px" style={{ background: `${accent}30` }} />
+            <div className="absolute top-5 left-0 right-0 h-px" style={{ background: `${accent}40` }} />
             {slide.items?.map((item, i) => (
               <div key={i} className="flex flex-col items-center text-center relative z-10 flex-1 px-[1%]">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold border-2 mb-3" style={{ background: `${accent}15`, borderColor: accent, fontSize: `${0.7 * fs}rem` }}>{i + 1}</div>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 mb-3" style={{ background: hasTmpl ? accent : `${accent}15`, borderColor: accent, color: hasTmpl ? '#fff' : c.body, fontSize: `${0.7 * fs}rem` }}>{i + 1}</div>
                 <div className="font-bold mb-1" style={{ color: accent, fontSize: `${0.7 * fs}rem` }}>{item.phase}</div>
-                <div className="font-medium text-white/70" style={{ fontSize: `${0.7 * fs}rem` }}>{item.title}</div>
+                <div className="font-medium" style={{ color: c.sub, fontSize: `${0.7 * fs}rem` }}>{item.title}</div>
               </div>
             ))}
           </div>
@@ -261,17 +277,17 @@ function SlideRenderer({ slide, theme, si = 0, total = 1, templateBg, fontSize =
     ),
 
     'two-column': (
-      <div className="flex flex-col h-full" style={{ padding: '6% 7%' }}>
-        <h2 className="font-bold mb-[4%]" style={{ color: accent, fontSize: `${1.6 * fs}rem` }}>{slide.headline}</h2>
+      <div className="flex flex-col h-full" style={safeFull}>
+        <h2 className="font-bold mb-[3%]" style={{ color: c.h2, fontSize: `${1.5 * fs}rem` }}>{slide.headline}</h2>
         <div className="flex-1 grid grid-cols-2 gap-[3%]">
           {[{ t: slide.leftTitle, b: slide.leftBullets }, { t: slide.rightTitle, b: slide.rightBullets }].map((col, ci) => (
-            <div key={ci} className="p-[6%] rounded-xl border" style={{ background: `${accent}06`, borderColor: `${accent}12` }}>
-              <h3 className="font-bold mb-[6%]" style={{ color: accent, fontSize: `${0.95 * fs}rem` }}>{col.t}</h3>
-              <div className="space-y-[5%]">
+            <div key={ci} className="p-[5%] rounded-xl border" style={{ background: c.cardBg, borderColor: c.cardBorder }}>
+              <h3 className="font-bold mb-[5%]" style={{ color: accent, fontSize: `${0.9 * fs}rem` }}>{col.t}</h3>
+              <div className="space-y-[4%]">
                 {col.b?.map((b, i) => (
-                  <div key={i} className="flex items-start gap-[5%]">
+                  <div key={i} className="flex items-start gap-[4%]">
                     <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: accent }} />
-                    <span className="text-white/70" style={{ fontSize: `${0.75 * fs}rem` }}>{b}</span>
+                    <span style={{ color: c.body, fontSize: `${0.75 * fs}rem` }}>{b}</span>
                   </div>
                 ))}
               </div>
@@ -282,30 +298,30 @@ function SlideRenderer({ slide, theme, si = 0, total = 1, templateBg, fontSize =
     ),
 
     closing: (
-      <div className="flex flex-col items-center justify-center h-full text-center px-[12%]">
-        <h1 className="font-extrabold text-white mb-2" style={{ fontSize: `${2 * fs}rem` }}>{slide.headline}</h1>
-        {slide.subheadline && <p className="font-medium mb-5 opacity-70" style={{ color: accent, fontSize: `${0.95 * fs}rem` }}>{slide.subheadline}</p>}
+      <div className="flex flex-col items-center justify-center h-full text-center" style={{ padding: hasTmpl ? '12% 10%' : '5% 10%' }}>
+        <h1 className="font-extrabold mb-2" style={{ color: c.h1, fontSize: `${2 * fs}rem` }}>{slide.headline}</h1>
+        {slide.subheadline && <p className="font-medium mb-5" style={{ color: c.sub, fontSize: `${0.95 * fs}rem` }}>{slide.subheadline}</p>}
         {slide.bullets?.map((b, i) => (
-          <div key={i} className="flex items-center gap-2 mb-1"><ArrowRight className="w-4 h-4" style={{ color: accent }} /><span className="text-white/70" style={{ fontSize: `${0.85 * fs}rem` }}>{b}</span></div>
+          <div key={i} className="flex items-center gap-2 mb-1"><ArrowRight className="w-4 h-4" style={{ color: accent }} /><span style={{ color: c.body, fontSize: `${0.85 * fs}rem` }}>{b}</span></div>
         ))}
       </div>
     ),
   };
 
-  // Card layout for content
+  // Card layout for content（参考 Image 2 那种三卡片效果）
   const cardLayout = (
-    <div className="flex flex-col h-full" style={{ padding: '5% 6%' }}>
-      <h2 className="font-extrabold mb-[4%]" style={{ color: accent, fontSize: `${1.6 * fs}rem` }}>{slide.headline}</h2>
+    <div className="flex flex-col h-full" style={safeFull}>
+      <h2 className="font-extrabold mb-[3%]" style={{ color: c.h2, fontSize: `${1.5 * fs}rem` }}>{slide.headline}</h2>
       <div className="flex-1 grid gap-[2.5%] content-center" style={{ gridTemplateColumns: `repeat(${Math.min(slide.bullets?.length || 3, 3)}, 1fr)` }}>
         {slide.bullets?.map((b, i) => {
           const parts = b.match(/^(.+?)[：:]\s*(.+)$/);
           const title = parts ? parts[1] : b;
           const desc = parts ? parts[2] : '';
           return (
-            <div key={i} className="rounded-xl border p-[8%] flex flex-col items-center text-center" style={{ background: `rgba(255,255,255,0.025)`, borderColor: `${accent}18` }}>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-[10%]" style={{ background: `${accent}12` }}>{getIcon(i)}</div>
-              <div className="font-bold text-white/90 mb-[5%]" style={{ fontSize: `${0.85 * fs}rem` }}>{title}</div>
-              {desc && <div className="text-white/45 leading-relaxed" style={{ fontSize: `${0.65 * fs}rem` }}>{desc}</div>}
+            <div key={i} className="rounded-xl border p-[6%] flex flex-col items-center text-center overflow-hidden" style={{ background: c.cardBg, borderColor: c.cardBorder }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-[6%] flex-shrink-0" style={{ background: c.iconBg }}>{getIcon(i)}</div>
+              <div className="font-bold mb-[3%] leading-snug" style={{ color: hasTmpl ? c.h1 : 'rgba(255,255,255,0.9)', fontSize: `${0.72 * fs}rem` }}>{title}</div>
+              {desc && <div className="leading-relaxed" style={{ color: c.sub, fontSize: `${0.55 * fs}rem`, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{desc}</div>}
             </div>
           );
         })}
@@ -313,45 +329,53 @@ function SlideRenderer({ slide, theme, si = 0, total = 1, templateBg, fontSize =
     </div>
   );
 
-  // List layout for content
+  // List layout for content（参考 Image 3 那种左右分栏效果）
   const listLayout = (
-    <div className="flex h-full">
-      <div className="flex-1 flex flex-col" style={{ padding: '5% 6%' }}>
-        <h2 className="font-extrabold mb-[5%]" style={{ color: accent, fontSize: `${1.6 * fs}rem` }}>{slide.headline}</h2>
-        <div className="flex-1 flex flex-col justify-center gap-[4%]">
+    <div className={hasTmpl ? "flex flex-col h-full" : "flex h-full"} style={hasTmpl ? safeFull : undefined}>
+      <div className={hasTmpl ? "h-full flex flex-col" : "flex-1 flex flex-col"} style={hasTmpl ? undefined : { padding: '5% 6%' }}>
+        <h2 className="font-extrabold mb-[3%]" style={{ color: c.h2, fontSize: `${1.5 * fs}rem` }}>{slide.headline}</h2>
+        <div className="flex-1 flex flex-col justify-center gap-[2.5%] overflow-hidden">
           {slide.bullets?.map((b, i) => {
             const parts = b.match(/^(.+?)[：:]\s*(.+)$/);
             return (
-              <div key={i} className="flex items-start gap-[3%]">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${accent}10` }}>{getIcon(i)}</div>
+              <div key={i} className="flex items-start gap-[2.5%]">
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: c.iconBg }}>{getIcon(i)}</div>
                 <div className="flex-1 min-w-0">
-                  {parts ? (<><div className="font-bold text-white/85" style={{ fontSize: `${0.85 * fs}rem` }}>{parts[1]}</div><div className="text-white/40 mt-0.5" style={{ fontSize: `${0.7 * fs}rem` }}>{parts[2]}</div></>) :
-                    <div className="text-white/70" style={{ fontSize: `${0.8 * fs}rem` }}>{b}</div>}
+                  {parts ? (<><div className="font-bold leading-snug" style={{ color: hasTmpl ? c.h1 : 'rgba(255,255,255,0.85)', fontSize: `${0.75 * fs}rem` }}>{parts[1]}</div><div className="mt-0.5 leading-relaxed" style={{ color: c.sub, fontSize: `${0.6 * fs}rem`, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{parts[2]}</div></>) :
+                    <div className="leading-relaxed" style={{ color: c.body, fontSize: `${0.7 * fs}rem`, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{b}</div>}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
-      <div className="w-[35%] hidden md:flex items-center justify-center p-[3%]">
-        <div className="w-full h-[75%] rounded-2xl relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${accent}08, ${accent}03)` }}>
-          <div className="absolute inset-0 flex items-center justify-center opacity-[0.07]">{React.cloneElement(getIcon(si), { className: 'w-24 h-24' })}</div>
-          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `radial-gradient(${accent} 1px, transparent 1px)`, backgroundSize: '14px 14px' }} />
+      {/* 右侧装饰区 - 仅无模板时显示 */}
+      {!hasTmpl && (
+        <div className="w-[35%] hidden md:flex items-center justify-center p-[3%]">
+          <div className="w-full h-[75%] rounded-2xl relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${accent}08, ${accent}03)` }}>
+            <div className="absolute inset-0 flex items-center justify-center opacity-[0.07]">{React.cloneElement(getIcon(si), { className: 'w-24 h-24' })}</div>
+            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `radial-gradient(${accent} 1px, transparent 1px)`, backgroundSize: '14px 14px' }} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 
   const contentRender = slide.type === 'content' ? (isCards ? cardLayout : listLayout) : (layouts[slide.type] || listLayout);
 
   return (
-    <div className="aspect-video rounded-2xl shadow-2xl overflow-hidden relative" style={{ background: templateBg ? undefined : `linear-gradient(155deg, ${theme?.bg || '#0c1222'} 0%, #111b30 50%, ${theme?.bg || '#0e1526'} 100%)` }}>
-      {templateBg && <img src={templateBg} className="absolute inset-0 w-full h-full object-cover" alt="" />}
-      <div className={`absolute inset-0 ${templateBg ? 'bg-black/40' : ''}`}>
-        <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
-        {/* Decorative gradient patch */}
-        <div className="absolute top-0 right-0 w-[35%] h-[45%] opacity-[0.06] rounded-bl-[50%]" style={{ background: `radial-gradient(ellipse, ${accent}, transparent 70%)` }} />
-        <div className="absolute bottom-3 left-4 text-[10px] text-white/15 font-mono">{String(si + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}</div>
+    <div className="aspect-video rounded-2xl shadow-2xl overflow-hidden relative"
+      style={{ background: hasTmpl ? '#ffffff' : `linear-gradient(155deg, ${theme?.bg || '#0c1222'} 0%, #111b30 50%, ${theme?.bg || '#0e1526'} 100%)` }}>
+      {/* 模板背景图：object-contain 保持原比例，不拉伸 */}
+      {hasTmpl && <img src={templateBg} className="absolute inset-0 w-full h-full object-cover" alt="" />}
+      {/* 内容层：无遮罩 */}
+      <div className="absolute inset-0">
+        {/* 仅无模板时显示装饰 */}
+        {!hasTmpl && <>
+          <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
+          <div className="absolute top-0 right-0 w-[35%] h-[45%] opacity-[0.06] rounded-bl-[50%]" style={{ background: `radial-gradient(ellipse, ${accent}, transparent 70%)` }} />
+          <div className="absolute bottom-3 left-4 text-[10px] text-white/15 font-mono">{String(si + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}</div>
+        </>}
         {contentRender}
       </div>
     </div>
@@ -441,8 +465,17 @@ function SlideViewer({ pptData, templates, onReset, onExport, exporting }) {
 async function exportPPTX(pptData, theme, templates) {
   const pptx = new PptxGenJS();
   pptx.title = pptData.title;
-  const bgHex = (theme.bg || '#0c1222').replace('#', '');
+  const hasTmpl = !!(templates?.cover || templates?.middle || templates?.ending);
+  const bgHex = hasTmpl ? 'FFFFFF' : (theme.bg || '#0c1222').replace('#', '');
   const ac = (theme.accent || '#22d3ee').replace('#', '');
+  // 有模板时文字颜色用深色
+  const titleColor = hasTmpl ? '1a1a2e' : 'FFFFFF';
+  const bodyColor = hasTmpl ? '1e293b' : 'CCCCCC';
+  const subColor = hasTmpl ? '64748b' : '888888';
+  // 有模板时内容区域向下偏移避开 logo
+  const topY = hasTmpl ? 0.7 : 0.4;
+  const contentStartY = hasTmpl ? 1.6 : 1.3;
+
   pptx.defineSlideMaster({ title: 'M', background: { color: bgHex } });
 
   for (const [idx, slide] of pptData.slides.entries()) {
@@ -454,27 +487,30 @@ async function exportPPTX(pptData, theme, templates) {
     if (tmplBg) { try { s.background = { data: tmplBg }; } catch {} }
 
     if (slide.type === 'title') {
-      s.addText(slide.headline, { x: 0.5, y: 2.2, w: 9, h: 1.5, fontSize: 44, bold: true, color: 'FFFFFF', align: 'center', fontFace: 'Microsoft YaHei' });
+      s.addText(slide.headline, { x: 0.5, y: 2.2, w: 9, h: 1.5, fontSize: 44, bold: true, color: titleColor, align: 'center', fontFace: 'Microsoft YaHei' });
       if (slide.subheadline) s.addText(slide.subheadline, { x: 0.5, y: 3.7, w: 9, h: 0.7, fontSize: 22, color: ac, align: 'center', fontFace: 'Microsoft YaHei' });
     } else if (slide.type === 'closing') {
-      s.addText(slide.headline, { x: 0.5, y: 2, w: 9, h: 1, fontSize: 40, bold: true, color: 'FFFFFF', align: 'center', fontFace: 'Microsoft YaHei' });
+      s.addText(slide.headline, { x: 0.5, y: 2, w: 9, h: 1, fontSize: 40, bold: true, color: titleColor, align: 'center', fontFace: 'Microsoft YaHei' });
       if (slide.subheadline) s.addText(slide.subheadline, { x: 0.5, y: 3.2, w: 9, h: 0.6, fontSize: 20, color: ac, align: 'center', fontFace: 'Microsoft YaHei' });
     } else if (slide.type === 'data') {
-      s.addText(slide.headline, { x: 0.5, y: 0.4, w: 9, h: 0.7, fontSize: 28, bold: true, color: ac, fontFace: 'Microsoft YaHei' });
+      s.addText(slide.headline, { x: 0.5, y: topY, w: 9, h: 0.7, fontSize: 28, bold: true, color: ac, fontFace: 'Microsoft YaHei' });
       (slide.metrics || []).forEach((m, i) => {
         const col = i % 3, row = Math.floor(i / 3);
-        s.addText(m.value, { x: 0.5 + col * 3.2, y: 1.6 + row * 2, w: 2.8, h: 0.8, fontSize: 32, bold: true, color: ac, align: 'center', fontFace: 'Microsoft YaHei' });
-        s.addText(m.label, { x: 0.5 + col * 3.2, y: 2.4 + row * 2, w: 2.8, h: 0.4, fontSize: 14, color: 'AAAAAA', align: 'center', fontFace: 'Microsoft YaHei' });
+        s.addText(m.value, { x: 0.5 + col * 3.2, y: contentStartY + 0.3 + row * 2, w: 2.8, h: 0.8, fontSize: 32, bold: true, color: ac, align: 'center', fontFace: 'Microsoft YaHei' });
+        s.addText(m.label, { x: 0.5 + col * 3.2, y: contentStartY + 1.1 + row * 2, w: 2.8, h: 0.4, fontSize: 14, color: subColor, align: 'center', fontFace: 'Microsoft YaHei' });
       });
     } else {
-      s.addText(slide.headline, { x: 0.5, y: 0.4, w: 9, h: 0.7, fontSize: 28, bold: true, color: ac, fontFace: 'Microsoft YaHei' });
+      s.addText(slide.headline, { x: 0.5, y: topY, w: 9, h: 0.7, fontSize: 28, bold: true, color: ac, fontFace: 'Microsoft YaHei' });
+      const bulletCount = (slide.bullets || []).length;
+      const spacing = Math.min(1.3, (4.5 - 0.3) / Math.max(bulletCount, 1));
       (slide.bullets || []).forEach((b, i) => {
         const parts = b.match(/^(.+?)[：:]\s*(.+)$/);
+        const yPos = contentStartY + i * spacing;
         if (parts) {
-          s.addText(parts[1], { x: 0.8, y: 1.3 + i * 1.2, w: 8, h: 0.4, fontSize: 18, bold: true, color: 'DDDDDD', fontFace: 'Microsoft YaHei' });
-          s.addText(parts[2], { x: 0.8, y: 1.7 + i * 1.2, w: 8, h: 0.5, fontSize: 14, color: '888888', fontFace: 'Microsoft YaHei' });
+          s.addText(parts[1], { x: 0.8, y: yPos, w: 8.2, h: 0.35, fontSize: 16, bold: true, color: hasTmpl ? '1a1a2e' : 'DDDDDD', fontFace: 'Microsoft YaHei' });
+          s.addText(parts[2], { x: 0.8, y: yPos + 0.35, w: 8.2, h: 0.7, fontSize: 12, color: subColor, fontFace: 'Microsoft YaHei', lineSpacing: 16, valign: 'top' });
         } else {
-          s.addText(`•  ${b}`, { x: 0.8, y: 1.4 + i * 0.9, w: 8, h: 0.7, fontSize: 16, color: 'CCCCCC', valign: 'top', fontFace: 'Microsoft YaHei' });
+          s.addText(`•  ${b}`, { x: 0.8, y: yPos, w: 8.2, h: 0.9, fontSize: 14, color: bodyColor, valign: 'top', fontFace: 'Microsoft YaHei', lineSpacing: 16 });
         }
       });
     }
@@ -524,7 +560,7 @@ export default function App() {
     if (!outline) return;
     setPhase('generating'); setGenThinking(''); setPptData(null); setError(null);
     try {
-      const res = await fetch('/api/generate-ppt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outline, style: styleLabel, templateInfo: getTemplateInfo() }) });
+      const res = await fetch('/api/generate-ppt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outline, style: styleLabel, templateInfo: getTemplateInfo(), originalContent: content }) });
       const raw = await res.text(); let result; try { result = JSON.parse(raw); } catch { throw new Error('服务器响应异常，请重试'); }
       if (!res.ok) throw new Error(result.error || '生成失败');
       setGenThinking(result.thinking || '生成完成。');
