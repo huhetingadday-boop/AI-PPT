@@ -24,5 +24,4 @@ export { ProjectResourcesList } from './ProjectResourcesList';
 export { HelpModal } from './HelpModal';
 export { ProjectSettingsModal } from './ProjectSettingsModal';
 export { ExportTasksPanel } from './ExportTasksPanel';
-
-
+export { ThinkingPanel } from './ThinkingPanel';

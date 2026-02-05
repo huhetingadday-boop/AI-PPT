@@ -375,6 +375,8 @@ def generate_outline(project_id):
             logger.info(f"No reference files found for project {project_id}")
         
         # 根据项目类型选择不同的处理方式
+        thinking_text = ""  # AI 思考过程文本
+        
         if project.creation_type == 'outline':
             # 从大纲生成：解析用户输入的大纲文本
             if not project.outline_text:
@@ -382,7 +384,9 @@ def generate_outline(project_id):
             
             # Create project context and parse outline text into structured format
             project_context = ProjectContext(project, reference_files_content)
-            outline = ai_service.parse_outline_text(project_context, language=language)
+            result = ai_service.parse_outline_text(project_context, language=language)
+            outline = result.get('outline', [])
+            thinking_text = result.get('thinking', '')
         elif project.creation_type == 'descriptions':
             # 从描述生成：这个类型应该使用专门的端点
             return bad_request("Use /generate/from-description endpoint for descriptions type")
@@ -397,7 +401,9 @@ def generate_outline(project_id):
             
             # Create project context and generate outline from idea
             project_context = ProjectContext(project, reference_files_content)
-            outline = ai_service.generate_outline(project_context, language=language)
+            result = ai_service.generate_outline(project_context, language=language)
+            outline = result.get('outline', [])
+            thinking_text = result.get('thinking', '')
         
         # Flatten outline to pages
         pages_data = ai_service.flatten_outline(outline)
@@ -431,11 +437,12 @@ def generate_outline(project_id):
         
         db.session.commit()
         
-        logger.info(f"大纲生成完成: 项目 {project_id}, 创建了 {len(pages_list)} 个页面")
+        logger.info(f"大纲生成完成: 项目 {project_id}, 创建了 {len(pages_list)} 个页面, thinking 长度: {len(thinking_text)}")
         
-        # Return pages
+        # Return pages with thinking text
         return success_response({
-            'pages': [page.to_dict() for page in pages_list]
+            'pages': [page.to_dict() for page in pages_list],
+            'thinking': thinking_text  # AI 思考过程文本
         })
     
     except Exception as e:

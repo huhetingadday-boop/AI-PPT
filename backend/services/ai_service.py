@@ -300,7 +300,55 @@ class AIService:
             logger.error(f"Failed to download image from {url}: {str(e)}")
             return None
     
-    def generate_outline(self, project_context: ProjectContext, language: str = None) -> List[Dict]:
+    def _parse_thinking_and_json(self, response_text: str) -> tuple:
+        """
+        从 AI 响应中解析思考过程和 JSON 数据
+        
+        Args:
+            response_text: AI 返回的完整文本
+            
+        Returns:
+            tuple: (thinking_text, json_data)
+            - thinking_text: 思考过程文本
+            - json_data: 解析后的 JSON 对象
+        """
+        thinking_text = ""
+        json_data = None
+        
+        # 尝试从 ```json``` 代码块中提取 JSON
+        json_match = re.search(r'```json\s*([\s\S]*?)\s*```', response_text)
+        
+        if json_match:
+            # 提取 JSON 部分
+            json_str = json_match.group(1).strip()
+            # 提取思考过程（JSON 代码块之前的文本）
+            thinking_text = response_text[:json_match.start()].strip()
+            
+            try:
+                json_data = json.loads(json_str)
+            except json.JSONDecodeError as e:
+                logger.warning(f"JSON 解析失败: {str(e)}, 尝试回退解析")
+                # 回退：尝试从整个响应中提取 JSON
+                json_data = None
+        
+        # 如果没有找到代码块或解析失败，尝试直接解析
+        if json_data is None:
+            # 尝试找到 JSON 数组或对象
+            fallback_match = re.search(r'(\[[\s\S]*\]|\{[\s\S]*\})', response_text)
+            if fallback_match:
+                try:
+                    json_data = json.loads(fallback_match.group(1))
+                    # 如果有匹配，thinking 是匹配之前的部分
+                    if not thinking_text:
+                        thinking_text = response_text[:fallback_match.start()].strip()
+                except json.JSONDecodeError:
+                    raise ValueError(f"无法解析 AI 响应中的 JSON: {response_text[:500]}")
+            else:
+                raise ValueError(f"AI 响应中未找到有效的 JSON: {response_text[:500]}")
+        
+        return thinking_text, json_data
+
+    def generate_outline(self, project_context: ProjectContext, language: str = None) -> Dict:
         """
         Generate PPT outline from idea prompt
         Based on demo.py gen_outline()
@@ -309,13 +357,27 @@ class AIService:
             project_context: 项目上下文对象，包含所有原始信息
             
         Returns:
-            List of outline items (may contain parts with pages or direct pages)
+            Dict with keys:
+            - 'outline': List of outline items (may contain parts with pages or direct pages)
+            - 'thinking': AI 分析过程文本
         """
         outline_prompt = get_outline_generation_prompt(project_context, language)
-        outline = self.generate_json(outline_prompt, thinking_budget=1000)
-        return outline
+        
+        # 获取完整的 AI 响应
+        actual_budget = self._get_text_thinking_budget()
+        response_text = self.text_provider.generate_text(outline_prompt, thinking_budget=actual_budget)
+        
+        # 解析思考过程和 JSON
+        thinking_text, outline = self._parse_thinking_and_json(response_text)
+        
+        logger.info(f"大纲生成完成, thinking 长度: {len(thinking_text)}, outline 页数: {len(outline) if isinstance(outline, list) else 'N/A'}")
+        
+        return {
+            'outline': outline,
+            'thinking': thinking_text
+        }
     
-    def parse_outline_text(self, project_context: ProjectContext, language: str = None) -> List[Dict]:
+    def parse_outline_text(self, project_context: ProjectContext, language: str = None) -> Dict:
         """
         Parse user-provided outline text into structured outline format
         This method analyzes the text and splits it into pages without modifying the original text
@@ -324,11 +386,25 @@ class AIService:
             project_context: 项目上下文对象，包含所有原始信息
         
         Returns:
-            List of outline items (may contain parts with pages or direct pages)
+            Dict with keys:
+            - 'outline': List of outline items (may contain parts with pages or direct pages)
+            - 'thinking': AI 分析过程文本
         """
         parse_prompt = get_outline_parsing_prompt(project_context, language)
-        outline = self.generate_json(parse_prompt, thinking_budget=1000)
-        return outline
+        
+        # 获取完整的 AI 响应
+        actual_budget = self._get_text_thinking_budget()
+        response_text = self.text_provider.generate_text(parse_prompt, thinking_budget=actual_budget)
+        
+        # 解析思考过程和 JSON
+        thinking_text, outline = self._parse_thinking_and_json(response_text)
+        
+        logger.info(f"大纲解析完成, thinking 长度: {len(thinking_text)}, outline 页数: {len(outline) if isinstance(outline, list) else 'N/A'}")
+        
+        return {
+            'outline': outline,
+            'thinking': thinking_text
+        }
     
     def flatten_outline(self, outline: List[Dict]) -> List[Dict]:
         """

@@ -16,11 +16,14 @@ interface ProjectState {
   pageDescriptionGeneratingTasks: Record<string, boolean>;
   // 警告消息
   warningMessage: string | null;
+  // AI 思考过程文本（大纲生成时显示）
+  thinkingText: string | null;
 
   // Actions
   setCurrentProject: (project: Project | null) => void;
   setGlobalLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setThinkingText: (text: string | null) => void;
   
   // 项目操作
   initializeProject: (type: 'idea' | 'outline' | 'description', content: string, templateImage?: File, templateStyle?: string) => Promise<void>;
@@ -113,11 +116,13 @@ const debouncedUpdatePage = debounce(
   pageGeneratingTasks: {},
   pageDescriptionGeneratingTasks: {},
   warningMessage: null,
+  thinkingText: null,
 
   // Setters
   setCurrentProject: (project) => set({ currentProject: project }),
   setGlobalLoading: (loading) => set({ isGlobalLoading: loading }),
   setError: (error) => set({ error }),
+  setThinkingText: (text) => set({ thinkingText: text }),
 
   // 初始化项目
   initializeProject: async (type, content, templateImage, templateStyle) => {
@@ -472,10 +477,18 @@ const debouncedUpdatePage = debounce(
     const { currentProject } = get();
     if (!currentProject) return;
 
-    set({ isGlobalLoading: true, error: null });
+    // 清空之前的思考过程文本，开始新的生成
+    set({ isGlobalLoading: true, error: null, thinkingText: null });
     try {
       const response = await api.generateOutline(currentProject.id!);
       console.log('[生成大纲] API响应:', response);
+      
+      // 提取并保存 AI 思考过程文本
+      const thinkingText = response.data?.thinking || null;
+      if (thinkingText) {
+        console.log('[生成大纲] AI 思考过程:', thinkingText.substring(0, 100) + '...');
+        set({ thinkingText });
+      }
       
       // 刷新项目数据，确保获取最新的大纲页面
       await get().syncProject();

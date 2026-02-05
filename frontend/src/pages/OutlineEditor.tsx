@@ -18,7 +18,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, Loading, useConfirm, useToast, AiRefineInput, FilePreviewModal, ProjectResourcesList } from '@/components/shared';
+import { Button, Loading, useConfirm, useToast, AiRefineInput, FilePreviewModal, ProjectResourcesList, ThinkingPanel } from '@/components/shared';
 import { OutlineCard } from '@/components/outline/OutlineCard';
 import { useProjectStore } from '@/store/useProjectStore';
 import { refineOutline } from '@/api/endpoints';
@@ -67,6 +67,7 @@ export const OutlineEditor: React.FC = () => {
     addNewPage,
     generateOutline,
     isGlobalLoading,
+    thinkingText,
   } = useProjectStore();
 
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
@@ -272,7 +273,19 @@ export const OutlineEditor: React.FC = () => {
 
       {/* 主内容区 */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* 左侧：大纲列表 */}
+        {/* 左侧：AI 思考面板（生成时显示） */}
+        {(isGlobalLoading || thinkingText) && (
+          <div className="hidden md:block w-80 border-r border-gray-200 flex-shrink-0 p-3">
+            <ThinkingPanel
+              text={thinkingText}
+              isLoading={isGlobalLoading}
+              title="AI 分析过程"
+              className="h-full"
+            />
+          </div>
+        )}
+        
+        {/* 中间：大纲列表 */}
         <div className="flex-1 p-3 md:p-6 overflow-y-auto min-h-0">
           <div className="max-w-4xl mx-auto">
             {/* 操作按钮 */}

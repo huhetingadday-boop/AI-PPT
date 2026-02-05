@@ -123,6 +123,17 @@ def get_outline_generation_prompt(project_context: 'ProjectContext', language: s
     prompt = (f"""\
 You are a helpful assistant that generates an outline for a ppt.
 
+## Step 1: Analysis Process (Output 200-300 words of analysis)
+
+First, analyze the user's request and any provided reference materials. Include:
+- Core themes and key arguments (3-5 points)
+- Key data and metrics (if any)
+- Methodologies and frameworks (if applicable)
+- Logical relationships (progressive, parallel, causal)
+- Recommended PPT structure approach
+
+## Step 2: Generate PPT Outline JSON
+
 You can organize the content in two ways:
 
 1. Simple format (for short PPTs without major sections):
@@ -149,7 +160,12 @@ You can organize the content in two ways:
 Choose the format that best fits the content. Use parts when the PPT has clear major sections.
 Unless otherwise specified, the first page should be kept simplest, containing only the title, subtitle, and presenter information.
 
-The user's request: {idea_prompt}. Now generate the outline, don't include any other text.
+The user's request: {idea_prompt}
+
+Now please:
+1. First output your analysis process (Step 1)
+2. Then output the outline JSON wrapped in ```json``` code block (Step 2)
+
 {get_language_instruction(language)}
 """)
     
@@ -178,7 +194,17 @@ The user has provided the following outline text:
 
 {outline_text}
 
-Your task is to analyze this text and convert it into a structured JSON format WITHOUT modifying any of the original text content. 
+## Step 1: Analysis Process (Output 150-200 words of analysis)
+
+First, analyze the user's outline text structure. Include:
+- Number of pages/sections identified
+- Overall structure pattern (flat or hierarchical)
+- Key topics and themes
+- Recommended organization approach
+
+## Step 2: Parse into Structured JSON
+
+Your task is to convert the text into a structured JSON format WITHOUT modifying any of the original text content. 
 You should only reorganize and structure the existing content, preserving all titles, points, and text exactly as provided.
 
 You can organize the content in two ways:
@@ -213,7 +239,10 @@ Important rules:
 - If the text has clear sections/parts, use the part-based format
 - Extract titles and points from the original text, keeping them exactly as written
 
-Now parse the outline text above into the structured format. Return only the JSON, don't include any other text.
+Now please:
+1. First output your analysis process (Step 1)
+2. Then output the structured JSON wrapped in ```json``` code block (Step 2)
+
 {get_language_instruction(language)}
 """)
     
